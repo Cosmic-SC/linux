@@ -2677,6 +2677,23 @@
 
 			Default is Y (on).
 
+	kvm.enable_virt_at_load=[KVM,ARM64,LOONGARCH,MIPS,RISCV,X86]
+			If enabled, KVM will enable virtualization in hardware
+			when KVM is loaded, and disable virtualization when KVM
+			is unloaded (if KVM is built as a module).
+
+			If disabled, KVM will dynamically enable and disable
+			virtualization on-demand when creating and destroying
+			VMs, i.e. on the 0=>1 and 1=>0 transitions of the
+			number of VMs.
+
+			Enabling virtualization at module lode avoids potential
+			latency for creation of the 0=>1 VM, as KVM serializes
+			virtualization enabling across all online CPUs.  The
+			"cost" of enabling virtualization when KVM is loaded,
+			is that doing so may interfere with using out-of-tree
+			hypervisors that want to "own" virtualization hardware.
+
 	kvm.enable_vmware_backdoor=[KVM] Support VMware backdoor PV interface.
 				   Default is false (don't support).
 
@@ -6807,6 +6824,51 @@
 			will enable the "sched_switch" event (note, the "sched:" is optional, and
 			the same thing would happen if it was left off). The irq_handler_entry
 			event, and all events under the "initcall" system.
+
+			Flags can be added to the instance to modify its behavior when it is
+			created. The flags are separated by '^'.
+
+			The available flags are:
+
+			    traceoff	- Have the tracing instance tracing disabled after it is created.
+			    traceprintk	- Have trace_printk() write into this trace instance
+					  (note, "printk" and "trace_printk" can also be used)
+
+				trace_instance=foo^traceoff^traceprintk,sched,irq
+
+			The flags must come before the defined events.
+
+			If memory has been reserved (see memmap for x86), the instance
+			can use that memory:
+
+				memmap=12M$0x284500000 trace_instance=boot_map@0x284500000:12M
+
+			The above will create a "boot_map" instance that uses the physical
+			memory at 0x284500000 that is 12Megs. The per CPU buffers of that
+			instance will be split up accordingly.
+
+			Alternatively, the memory can be reserved by the reserve_mem option:
+
+				reserve_mem=12M:4096:trace trace_instance=boot_map@trace
+
+			This will reserve 12 megabytes at boot up with a 4096 byte alignment
+			and place the ring buffer in this memory. Note that due to KASLR, the
+			memory may not be the same location each time, which will not preserve
+			the buffer content.
+
+			Also note that the layout of the ring buffer data may change between
+			kernel versions where the validator will fail and reset the ring buffer
+			if the layout is not the same as the previous kernel.
+
+			If the ring buffer is used for persistent bootups and has events enabled,
+			it is recommend to disable tracing so that events from a previous boot do not
+			mix with events of the current boot (unless you are debugging a random crash
+			at boot up).
+
+				reserve_mem=12M:4096:trace trace_instance=boot_map^traceoff^traceprintk@trace,sched,irq
+
+			See also Documentation/trace/debugging.rst
+
 
 	trace_options=[option-list]
 			[FTRACE] Enable or disable tracer options at boot.

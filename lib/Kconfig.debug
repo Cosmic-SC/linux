@@ -379,13 +379,15 @@ config DEBUG_INFO_BTF
 	depends on !DEBUG_INFO_SPLIT && !DEBUG_INFO_REDUCED
 	depends on !GCC_PLUGIN_RANDSTRUCT || COMPILE_TEST
 	depends on BPF_SYSCALL
-	depends on !DEBUG_INFO_DWARF5 || PAHOLE_VERSION >= 121
+	depends on PAHOLE_VERSION >= 116
+	depends on DEBUG_INFO_DWARF4 || PAHOLE_VERSION >= 121
 	# pahole uses elfutils, which does not have support for Hexagon relocations
 	depends on !HEXAGON
 	help
 	  Generate deduplicated BTF type information from DWARF debug info.
-	  Turning this on expects presence of pahole tool, which will convert
-	  DWARF type info into equivalent deduplicated BTF type info.
+	  Turning this on requires pahole v1.16 or later (v1.21 or later to
+	  support DWARF 5), which will convert DWARF type info into equivalent
+	  deduplicated BTF type info.
 
 config PAHOLE_HAS_SPLIT_BTF
 	def_bool PAHOLE_VERSION >= 119
@@ -570,6 +572,21 @@ config VMLINUX_MAP
 	  and debugging magic section games, and for seeing which
 	  pieces of code get eliminated with
 	  CONFIG_LD_DEAD_CODE_DATA_ELIMINATION.
+
+config BUILTIN_MODULE_RANGES
+	bool "Generate address range information for builtin modules"
+	depends on !LTO
+	depends on VMLINUX_MAP
+	help
+	 When modules are built into the kernel, there will be no module name
+	 associated with its symbols in /proc/kallsyms.  Tracers may want to
+	 identify symbols by module name and symbol name regardless of whether
+	 the module is configured as loadable or not.
+
+	 This option generates modules.builtin.ranges in the build tree with
+	 offset ranges (per ELF section) for the module(s) they belong to.
+	 It also records an anchor symbol to determine the load address of the
+	 section.
 
 config DEBUG_FORCE_WEAK_PER_CPU
 	bool "Force weak per-cpu definitions"
